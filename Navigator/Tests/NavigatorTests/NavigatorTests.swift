@@ -42,14 +42,26 @@ struct NavigatorTests {
         #expect(router.presentingSheet == nil)
     }
 
-    @Test("navigate(to:style:.present) sets the presented sheet and leaves path untouched")
+    @Test("navigate(to:style:.sheet) sets the presented sheet and leaves path untouched")
     func presentSetsSheet() {
         let router = Navigator()
 
-        router.navigate(to: VoidRouteKey.self, style: .present)
+        router.navigate(to: VoidRouteKey.self, style: .sheet)
 
         #expect(router.path.isEmpty)
         #expect(router.presentingSheet?.key == VoidRouteKey.id)
+        #expect(router.presentingFullScreenCover == nil)
+    }
+
+    @Test("navigate(to:style:.fullScreenCover) sets the presented full-screen cover")
+    func fullScreenCoverSetsModal() {
+        let router = Navigator()
+
+        router.navigate(to: VoidRouteKey.self, style: .fullScreenCover)
+
+        #expect(router.path.isEmpty)
+        #expect(router.presentingSheet == nil)
+        #expect(router.presentingFullScreenCover?.key == VoidRouteKey.id)
     }
 
     @Test("navigate(to:style:.overridingRoot) replaces the existing stack with a single route")
@@ -132,9 +144,17 @@ struct NavigatorTests {
     @Test("dismiss clears the presented sheet")
     func dismissClearsSheet() {
         let router = Navigator()
-        router.navigate(to: VoidRouteKey.self, style: .present)
+        router.navigate(to: VoidRouteKey.self, style: .sheet)
         router.dismiss()
         #expect(router.presentingSheet == nil)
+    }
+
+    @Test("dismiss clears the presented full-screen cover")
+    func dismissClearsFullScreenCover() {
+        let router = Navigator()
+        router.navigate(to: VoidRouteKey.self, style: .fullScreenCover)
+        router.dismiss()
+        #expect(router.presentingFullScreenCover == nil)
     }
 
     @Test("perform(intent) pushes a route built from a NavigationIntent")
@@ -171,7 +191,7 @@ struct NavigatorTests {
         router.onEvent = { events.append($0) }
 
         router.navigate(to: VoidRouteKey.self)
-        router.navigate(to: VoidRouteKey.self, style: .present)
+        router.navigate(to: VoidRouteKey.self, style: .sheet)
         router.dismiss()
         router.navigate(to: VoidRouteKey.self, style: .overridingRoot)
         router.popToRoot()
@@ -181,7 +201,7 @@ struct NavigatorTests {
         // match the case kinds positionally.
         #expect(events.count == 6)
         if case .pushed = events[0] {} else { Issue.record("expected .pushed") }
-        if case .presented = events[1] {} else { Issue.record("expected .presented") }
+        if case .presented(_, style: .sheet) = events[1] {} else { Issue.record("expected .presented(.sheet)") }
         if case .dismissed = events[2] {} else { Issue.record("expected .dismissed") }
         if case .replacedRoot = events[3] {} else { Issue.record("expected .replacedRoot") }
         if case .poppedToRoot = events[4] {} else { Issue.record("expected .poppedToRoot") }
@@ -210,12 +230,6 @@ struct NavigationIntentTests {
         #expect(resolved.parameter.cast(to: Void.self) != nil)
     }
 
-    @Test("Intents with the same key are equal")
-    func equalityIsByKey() {
-        let a = NavigationIntent(StringRouteKey.self, parameter: "a")
-        let b = NavigationIntent(StringRouteKey.self, parameter: "b")
-        #expect(a == b)
-    }
 }
 
 // MARK: - RouteKey default id
@@ -330,7 +344,7 @@ struct RouteRegistryTests {
         #expect(registry.registeredKeyIDs.isEmpty)
     }
 
-    @Test("view(for:) returns nil and reports an unresolved route when the key is unknown")
+    @Test("resolve(_:) returns an unresolved-route failure when the key is unknown")
     func unresolvedRouteReportsDiagnostics() {
         var unresolvedKey: String?
         let registry = RouteRegistry(
@@ -340,9 +354,16 @@ struct RouteRegistryTests {
             )
         )
 
-        let view = registry.view(for: ResolvedRoute.resolve(StringRouteKey.self, parameter: "x"))
+        let resolution = registry.resolve(ResolvedRoute.resolve(StringRouteKey.self, parameter: "x"))
 
-        #expect(view == nil)
+        switch resolution {
+        case .failed(.unregisteredRoute(let key)):
+            #expect(key == StringRouteKey.id)
+        case .resolved:
+            Issue.record("expected unresolved-route failure")
+        case .failed(let failure):
+            Issue.record("expected unresolved-route failure, got \(failure)")
+        }
         #expect(unresolvedKey == StringRouteKey.id)
     }
 
@@ -359,7 +380,7 @@ struct RouteRegistryTests {
             return Text("second")
         }
 
-        _ = registry.view(for: ResolvedRoute.resolve(StringRouteKey.self, parameter: "x"))
+        _ = registry.resolve(ResolvedRoute.resolve(StringRouteKey.self, parameter: "x"))
         #expect(callCount == 1) // first handler won
     }
 
@@ -376,8 +397,39 @@ struct RouteRegistryTests {
             return Text("second")
         }
 
-        _ = registry.view(for: ResolvedRoute.resolve(StringRouteKey.self, parameter: "x"))
+        _ = registry.resolve(ResolvedRoute.resolve(StringRouteKey.self, parameter: "x"))
         #expect(whichRan == "second")
+    }
+
+    @Test("Type mismatch returns a typed failure so the coordinator can render an error view")
+    func typeMismatchReturnsNil() {
+        var mismatch: (String, String, String)?
+        let registry = RouteRegistry(
+            diagnostics: NavigatorDiagnostics(
+                duplicatePolicy: .replaceSilently,
+                typeMismatchPolicy: .reportOnly,
+                onParameterTypeMismatch: { key, expected, actual in
+                    mismatch = (key, expected, actual)
+                }
+            )
+        )
+        registry.register(StringHandler())
+
+        let resolution = registry.resolve(ResolvedRoute(key: StringRouteKey.id, parameter: AnySendable(1)))
+
+        switch resolution {
+        case .failed(.parameterTypeMismatch(let key, let expected, let actual)):
+            #expect(key == StringRouteKey.id)
+            #expect(expected == String(describing: String.self))
+            #expect(actual == String(describing: Int.self))
+        case .resolved:
+            Issue.record("expected parameter-type-mismatch failure")
+        case .failed(let failure):
+            Issue.record("expected parameter-type-mismatch failure, got \(failure)")
+        }
+        #expect(mismatch?.0 == StringRouteKey.id)
+        #expect(mismatch?.1 == String(describing: String.self))
+        #expect(mismatch?.2 == String(describing: Int.self))
     }
 }
 
@@ -397,37 +449,5 @@ struct AnySendableTests {
     func anyAccessor() {
         let erased = AnySendable(42)
         #expect(erased.value as? Int == 42)
-    }
-}
-
-// MARK: - FlowScope
-
-@MainActor
-private final class ScopedFlow {
-    static nonisolated(unsafe) var constructionCount = 0
-    let id = UUID()
-
-    init() { Self.constructionCount += 1 }
-}
-
-@MainActor
-struct FlowScopeTests {
-
-    @Test("Factory runs exactly once even if install is called many times")
-    func factoryRunsOnce() {
-        ScopedFlow.constructionCount = 0
-        let scope = FlowScope<ScopedFlow>()
-
-        // Simulate many body re-evaluations that each re-apply the modifier.
-        let view = Color.clear
-            .flowScope(scope) { ScopedFlow() }
-            .flowScope(scope) { ScopedFlow() }
-            .flowScope(scope) { ScopedFlow() }
-        _ = view
-
-        let first = scope.wrappedValue.id
-        let second = scope.wrappedValue.id
-        #expect(first == second)
-        #expect(ScopedFlow.constructionCount == 1)
     }
 }

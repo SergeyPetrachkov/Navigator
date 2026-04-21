@@ -26,7 +26,7 @@ import Foundation
 /// ## Executing an intent
 ///
 /// ```swift
-/// router.perform(intent, style: .present)
+/// router.perform(intent, style: .sheet)
 /// ```
 ///
 /// ## Deep-link recipe
@@ -56,7 +56,7 @@ import Foundation
 ///     router.perform(intent)
 /// }
 /// ```
-public struct NavigationIntent: Sendable, Hashable {
+public struct NavigationIntent: Sendable {
 
     /// The route key's stable string identifier.
     public let key: String
@@ -84,15 +84,5 @@ public struct NavigationIntent: Sendable, Hashable {
     /// Resolve the intent into a `ResolvedRoute` (adds a fresh event id).
     public func makeResolvedRoute() -> ResolvedRoute {
         ResolvedRoute(key: key, parameter: parameter)
-    }
-
-    // NavigationIntent equality is structural on `key` only — deep-link matching logic
-    // compares intents by key, not by the opaque parameter.
-    public static func == (lhs: NavigationIntent, rhs: NavigationIntent) -> Bool {
-        lhs.key == rhs.key
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(key)
     }
 }

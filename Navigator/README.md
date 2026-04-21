@@ -24,7 +24,7 @@ shared enum.
 | `RouteHandler` | Feature module | Factory that builds the destination `View` |
 | `RouteRegistry` | Composition root | Phone book: id → factory |
 | `AppRouteModule` | Feature module | Bundles every handler a feature contributes |
-| `Navigator` | Injected into env | Feature-facing navigation API |
+| `Navigator` | Coordinator-owned; injected into env or store dependencies | Feature-facing navigation API |
 | `NavigationIntent` | Anywhere | Router-independent "navigate here" value, e.g. for deep links |
 | `RoutingCoordinatorView` | Composition root | SwiftUI integration — binds router state to `NavigationStack` |
 
@@ -69,7 +69,8 @@ No other file needs to change.
 ```swift
 router.navigate(to: ChatRouteKey.self)                                // push, Void parameter
 router.navigate(to: ProfileRouteKey.self, parameter: userID)          // push, with parameter
-router.navigate(to: PaywallRouteKey.self, style: .present)            // sheet
+router.navigate(to: PaywallRouteKey.self, style: .sheet)              // sheet
+router.navigate(to: LoginRouteKey.self, style: .fullScreenCover)      // full-screen cover
 router.navigate(to: OrdersRouteKey.self, style: .overridingRoot)      // replace root
 
 router.pop()                                                          // pop 1
@@ -150,44 +151,6 @@ A large feature can host its own `RoutingCoordinatorView` with a private `Naviga
 `RouteRegistry` for sub-routes. The parent coordinator never sees those sub-routes.
 See `BigTechNavigator/Sources/DemoCatalogFeature/CatalogFeature.swift` for a working
 example (`CheckoutCoordinatorView`).
-
-## FlowScope: exactly-once construction for flow-scoped objects
-
-SwiftUI's `@State` is **eager**. `@State private var store = FooStore(...)` evaluates the
-initializer every time the view struct is reinitialised — and SwiftUI silently discards all
-but the first. Those discarded instances are fully constructed and then `deinit`. A coordinator
-view hosted inside `.sheet(item:)` or `.navigationDestination(for:)` is typically reinitialised
-**at least twice** per presentation, which is why `deinit` appears to fire more than once.
-
-For expensive stores, observable work, or anything with a visible `deinit` side effect, use
-`@FlowScope`:
-
-```swift
-@MainActor
-private final class FavoritesFlow {
-    let navigator = Navigator()
-    let registry: RouteRegistry
-    let store: FavoritesStore
-
-    init(dependencies: DependenciesContainer) { /* ... */ }
-}
-
-struct CoordinatedFavoritesView: View {
-    let dependencies: DependenciesContainer
-    @FlowScope private var flow: FavoritesFlow
-
-    var body: some View {
-        RoutingCoordinatorView(router: flow.navigator, registry: flow.registry) {
-            FavoritesView(store: flow.store)
-        }
-        .flowScope($flow) { FavoritesFlow(dependencies: dependencies) }
-    }
-}
-```
-
-`FlowScope` constructs the flow object the first time the body asks for it and caches it in a
-stable `@State` box. Subsequent body evaluations reuse the existing instance — no throwaway
-construction, no spurious `deinit`.
 
 ## Testing
 

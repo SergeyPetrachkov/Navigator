@@ -54,9 +54,9 @@ public final class RouteRegistry {
     /// Diagnostics used for duplicate handlers / unresolved routes / type mismatches.
     public var diagnostics: NavigatorDiagnostics
 
-    // Type-erased factory: (Any) -> AnyView.
+    // Type-erased factory: (Any) -> RouteResolution.
     // The `Any` is the route's Parameter, cast inside the closure.
-    private var handlers: [String: @MainActor (Any) -> AnyView] = [:]
+    private var handlers: [String: @MainActor (Any) -> RouteResolution] = [:]
 
     public init(diagnostics: NavigatorDiagnostics = .default) {
         self.diagnostics = diagnostics
@@ -66,17 +66,16 @@ public final class RouteRegistry {
 
     /// Register a `RouteHandler` for its `Key`.
     public func register<H: RouteHandler>(_ handler: H) {
-        let factory: @MainActor (Any) -> AnyView = { [diagnostics] parameter in
+        let factory: @MainActor (Any) -> RouteResolution = { [diagnostics] parameter in
             guard let typed = parameter as? H.Key.Parameter else {
-                Self.reportTypeMismatch(
+                return .failed(Self.reportTypeMismatch(
                     key: H.Key.id,
                     expected: H.Key.Parameter.self,
                     got: parameter,
                     diagnostics: diagnostics
-                )
-                return AnyView(EmptyView())
+                ))
             }
-            return AnyView(handler.destination(for: typed))
+            return .resolved(AnyView(handler.destination(for: typed)))
         }
         install(H.Key.id, factory: factory)
     }
@@ -89,17 +88,16 @@ public final class RouteRegistry {
         _ key: K.Type,
         @ViewBuilder destination: @escaping @MainActor (K.Parameter) -> V
     ) {
-        let factory: @MainActor (Any) -> AnyView = { [diagnostics] parameter in
+        let factory: @MainActor (Any) -> RouteResolution = { [diagnostics] parameter in
             guard let typed = parameter as? K.Parameter else {
-                Self.reportTypeMismatch(
+                return .failed(Self.reportTypeMismatch(
                     key: K.id,
                     expected: K.Parameter.self,
                     got: parameter,
                     diagnostics: diagnostics
-                )
-                return AnyView(EmptyView())
+                ))
             }
-            return AnyView(destination(typed))
+            return .resolved(AnyView(destination(typed)))
         }
         install(K.id, factory: factory)
     }
@@ -138,16 +136,12 @@ public final class RouteRegistry {
 
     // MARK: - Resolution
 
-    /// Resolve a `ResolvedRoute` into a view.
-    ///
-    /// Returns `nil` if no handler is registered for the route's id. The caller
-    /// (`RoutingCoordinatorView`) replaces `nil` with the missing-route fallback.
-    /// The unresolved route is also reported via diagnostics.
-    public func view(for route: ResolvedRoute) -> AnyView? {
+    /// Resolve a `ResolvedRoute` into a typed result.
+    public func resolve(_ route: ResolvedRoute) -> RouteResolution {
         guard let factory = handlers[route.key] else {
             diagnostics.logger?("[Navigator] No handler registered for route '\(route.key)'")
             diagnostics.onUnresolvedRoute?(route.key)
-            return nil
+            return .failed(.unregisteredRoute(key: route.key))
         }
         return factory(route.parameter.value)
     }
@@ -169,7 +163,7 @@ public final class RouteRegistry {
 
     // MARK: - Internals
 
-    private func install(_ id: String, factory: @MainActor @escaping (Any) -> AnyView) {
+    private func install(_ id: String, factory: @MainActor @escaping (Any) -> RouteResolution) {
         if handlers[id] != nil {
             switch diagnostics.duplicatePolicy {
             case .assertInDebug:
@@ -194,15 +188,18 @@ public final class RouteRegistry {
         expected: Expected.Type,
         got value: Any,
         diagnostics: NavigatorDiagnostics
-    ) {
+    ) -> RouteResolutionFailure {
         let expectedName = String(describing: Expected.self)
         let actualName = String(describing: type(of: value))
         diagnostics.logger?(
             "[Navigator] Type mismatch for route '\(key)': expected \(expectedName), got \(actualName)"
         )
         diagnostics.onParameterTypeMismatch?(key, expectedName, actualName)
-        assertionFailure(
-            "[Navigator] Type mismatch for route '\(key)': expected \(expectedName), got \(actualName)"
-        )
+        if diagnostics.typeMismatchPolicy == .assertInDebug {
+            assertionFailure(
+                "[Navigator] Type mismatch for route '\(key)': expected \(expectedName), got \(actualName)"
+            )
+        }
+        return .parameterTypeMismatch(key: key, expected: expectedName, actual: actualName)
     }
 }

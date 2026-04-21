@@ -23,17 +23,18 @@ import SwiftUI
 /// }
 /// ```
 ///
-/// Features never import this type. They only import `Navigator` and interact with `Navigator`.
+/// Features never import this type. They only import `Navigator` and interact with it either
+/// through `@Environment(Navigator.self)` in views or explicit dependency injection into stores.
 ///
 /// ## Customizing the "missing route" fallback
 ///
-/// A composition root can inject a custom view that's rendered when a route has no
-/// registered handler. Use `.missingRouteView { route in … }`:
+/// A composition root can inject a custom view that's rendered when route resolution
+/// fails. Use `.missingRouteView { failure, route in … }`:
 ///
 /// ```swift
 /// RoutingCoordinatorView(router: router, registry: registry) { ... }
-///     .missingRouteView { route in
-///         CrashReporter.log("Unresolved route: \(route.key)")
+///     .missingRouteView { failure, route in
+///         CrashReporter.log("Route failure: \(failure)")
 ///         return EmptyView()
 ///     }
 /// ```
@@ -58,7 +59,22 @@ public struct RoutingCoordinatorView<Root: View>: View {
     }
 
     public var body: some View {
-        NavigationStack(path: $router.path) {
+        coordinatorBody
+    }
+
+    @ViewBuilder
+    private func resolve(_ route: ResolvedRoute) -> some View {
+        switch registry.resolve(route) {
+        case .resolved(let view):
+            view
+        case .failed(let failure):
+            missingRouteView(failure, route)
+        }
+    }
+
+    @ViewBuilder
+    private var coordinatorBody: some View {
+        let base = NavigationStack(path: $router.path) {
             root
                 .navigationDestination(for: ResolvedRoute.self) { route in
                     resolve(route)
@@ -69,15 +85,15 @@ public struct RoutingCoordinatorView<Root: View>: View {
         }
         .environment(router)
         .environment(registry)
-    }
 
-    @ViewBuilder
-    private func resolve(_ route: ResolvedRoute) -> some View {
-        if let view = registry.view(for: route) {
-            view
-        } else {
-            missingRouteView(route)
-        }
+        #if os(iOS)
+        base
+            .fullScreenCover(item: $router.presentingFullScreenCover) { route in
+                resolve(route)
+            }
+        #else
+        base
+        #endif
     }
 }
 
@@ -86,28 +102,34 @@ public struct RoutingCoordinatorView<Root: View>: View {
 /// The closure invoked when a `ResolvedRoute` cannot be resolved by the registry.
 ///
 /// Install a custom fallback via the `.missingRouteView { … }` view modifier. The
-/// default fallback shows a debug diagnostic and returns an empty view in release.
-public typealias MissingRouteView = @MainActor (ResolvedRoute) -> AnyView
+/// default fallback shows a diagnostic in every build so production users do not end up
+/// on a blank screen if routing composition is broken.
+public typealias MissingRouteView = @MainActor (RouteResolutionFailure, ResolvedRoute) -> AnyView
 
 private struct MissingRouteViewKey: EnvironmentKey {
-    static let defaultValue: MissingRouteView = { route in
-        #if DEBUG
+    static let defaultValue: MissingRouteView = { failure, route in
         AnyView(
             VStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.largeTitle)
-                Text("No handler for route '\(route.key)'")
+                Text("This screen is unavailable")
                     .font(.headline)
-                Text("Register a RouteHandler or call registry.register(...) at composition time.")
+                Text(message(for: failure, route: route))
                     .font(.caption)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
             }
             .padding()
         )
-        #else
-        AnyView(EmptyView())
-        #endif
+    }
+
+    private static func message(for failure: RouteResolutionFailure, route: ResolvedRoute) -> String {
+        switch failure {
+        case .unregisteredRoute:
+            return "The app could not open route '\(route.key)'."
+        case .parameterTypeMismatch(_, let expected, let actual):
+            return "The app could not open route '\(route.key)' because it expected \(expected) but received \(actual)."
+        }
     }
 }
 
@@ -121,7 +143,7 @@ extension EnvironmentValues {
 
 extension View {
     /// Install a custom fallback for unresolved routes in this subtree.
-    public func missingRouteView(@ViewBuilder _ builder: @escaping @MainActor (ResolvedRoute) -> some View) -> some View {
-        environment(\.navigatorMissingRouteView, { route in AnyView(builder(route)) })
+    public func missingRouteView(@ViewBuilder _ builder: @escaping @MainActor (RouteResolutionFailure, ResolvedRoute) -> some View) -> some View {
+        environment(\.navigatorMissingRouteView, { failure, route in AnyView(builder(failure, route)) })
     }
 }

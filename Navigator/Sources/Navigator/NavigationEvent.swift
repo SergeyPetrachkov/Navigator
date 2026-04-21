@@ -2,6 +2,11 @@ import Foundation
 
 // MARK: - Navigation Event
 
+public enum NavigationPresentationStyle: Sendable {
+    case sheet
+    case fullScreenCover
+}
+
 /// A signal emitted by `Navigator` after a successful navigation mutation.
 ///
 /// Use it for:
@@ -15,8 +20,8 @@ public enum NavigationEvent: Sendable {
     /// A route was pushed onto the navigation stack.
     case pushed(ResolvedRoute)
 
-    /// A route was presented as a modal sheet.
-    case presented(ResolvedRoute)
+    /// A route was presented modally.
+    case presented(ResolvedRoute, style: NavigationPresentationStyle)
 
     /// The navigation stack was replaced by a single new root.
     case replacedRoot(ResolvedRoute)

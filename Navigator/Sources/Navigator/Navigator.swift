@@ -8,6 +8,10 @@ public enum AppNavigationStyle: Sendable {
     case push
     /// Present as a modal sheet.
     case present
+    /// Present as a modal sheet.
+    case sheet
+    /// Present as a full-screen cover.
+    case fullScreenCover
     /// Replace the current navigation stack with a new root destination.
     case overridingRoot
 }
@@ -55,8 +59,11 @@ public enum AppNavigationStyle: Sendable {
 /// @Environment(Navigator.self) private var navigator
 ///
 /// Button("Open Chat") { navigator.navigate(to: ChatRouteKey.self) }
-/// Button("Profile")   { navigator.navigate(to: ProfileRouteKey.self, parameter: userID, style: .present) }
+/// Button("Profile")   { navigator.navigate(to: ProfileRouteKey.self, parameter: userID, style: .sheet) }
 /// ```
+///
+/// Stores can also receive a `Navigator` explicitly through their environment/dependencies.
+/// This project uses that pattern for action-driven navigation side effects.
 ///
 /// ## Deep-link usage
 ///
@@ -80,6 +87,9 @@ public final class Navigator {
 
     /// The currently presented sheet, if any. Bound to `.sheet(item:)`.
     public var presentingSheet: ResolvedRoute?
+
+    /// The currently presented full-screen cover, if any. Bound to `.fullScreenCover(item:)`.
+    public var presentingFullScreenCover: ResolvedRoute?
 
     /// Observer called after each successful navigation mutation. Analytics / tests.
     public var onEvent: (@MainActor (NavigationEvent) -> Void)?
@@ -158,10 +168,11 @@ public final class Navigator {
         onEvent?(.poppedToRoot)
     }
 
-    /// Dismiss the currently presented sheet.
+    /// Dismiss any currently presented modal destination.
     public func dismiss() {
-        guard presentingSheet != nil else { return }
+        guard presentingSheet != nil || presentingFullScreenCover != nil else { return }
         presentingSheet = nil
+        presentingFullScreenCover = nil
         onEvent?(.dismissed)
     }
 
@@ -172,9 +183,14 @@ public final class Navigator {
         case .push:
             path.append(route)
             onEvent?(.pushed(route))
-        case .present:
+        case .present, .sheet:
             presentingSheet = route
-            onEvent?(.presented(route))
+            presentingFullScreenCover = nil
+            onEvent?(.presented(route, style: .sheet))
+        case .fullScreenCover:
+            presentingFullScreenCover = route
+            presentingSheet = nil
+            onEvent?(.presented(route, style: .fullScreenCover))
         case .overridingRoot:
             path = [route]
             onEvent?(.replacedRoot(route))

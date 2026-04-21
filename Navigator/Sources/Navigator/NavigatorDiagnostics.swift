@@ -25,6 +25,13 @@ import Foundation
 /// ```
 public struct NavigatorDiagnostics: Sendable {
 
+    public enum TypeMismatchPolicy: Sendable {
+        /// Report and trigger `assertionFailure` in debug builds.
+        case assertInDebug
+        /// Report without tripping a debug assertion.
+        case reportOnly
+    }
+
     /// What the registry should do when a second handler is registered for an id that
     /// already has one.
     public enum DuplicatePolicy: Sendable {
@@ -38,17 +45,20 @@ public struct NavigatorDiagnostics: Sendable {
     }
 
     public var duplicatePolicy: DuplicatePolicy
+    public var typeMismatchPolicy: TypeMismatchPolicy
     public var logger: (@MainActor @Sendable (String) -> Void)?
     public var onUnresolvedRoute: (@MainActor @Sendable (_ key: String) -> Void)?
     public var onParameterTypeMismatch: (@MainActor @Sendable (_ key: String, _ expected: String, _ actual: String) -> Void)?
 
     public init(
         duplicatePolicy: DuplicatePolicy = .assertInDebug,
+        typeMismatchPolicy: TypeMismatchPolicy = .assertInDebug,
         logger: (@MainActor @Sendable (String) -> Void)? = nil,
         onUnresolvedRoute: (@MainActor @Sendable (_ key: String) -> Void)? = nil,
         onParameterTypeMismatch: (@MainActor @Sendable (_ key: String, _ expected: String, _ actual: String) -> Void)? = nil
     ) {
         self.duplicatePolicy = duplicatePolicy
+        self.typeMismatchPolicy = typeMismatchPolicy
         self.logger = logger
         self.onUnresolvedRoute = onUnresolvedRoute
         self.onParameterTypeMismatch = onParameterTypeMismatch
