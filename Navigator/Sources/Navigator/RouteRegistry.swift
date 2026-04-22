@@ -54,12 +54,15 @@ public final class RouteRegistry {
     /// Diagnostics used for duplicate handlers / unresolved routes / type mismatches.
     public var diagnostics: NavigatorDiagnostics
 
+    internal let parentRegistry: RouteRegistry?
+
     // Type-erased factory: (Any) -> RouteResolution.
     // The `Any` is the route's Parameter, cast inside the closure.
     private var handlers: [String: @MainActor (Any) -> RouteResolution] = [:]
 
-    public init(diagnostics: NavigatorDiagnostics = .default) {
+    public init(diagnostics: NavigatorDiagnostics = .default, parentRegistry: RouteRegistry? = nil) {
         self.diagnostics = diagnostics
+        self.parentRegistry = parentRegistry
     }
 
     // MARK: - Registration
@@ -137,23 +140,31 @@ public final class RouteRegistry {
     // MARK: - Resolution
 
     /// Resolve a `ResolvedRoute` into a typed result.
+    ///
+    /// Resolution order: local handlers first, parent next (if set).
     public func resolve(_ route: ResolvedRoute) -> RouteResolution {
-        guard let factory = handlers[route.key] else {
-            diagnostics.logger?("[Navigator] No handler registered for route '\(route.key)'")
-            diagnostics.onUnresolvedRoute?(route.key)
-            return .failed(.unregisteredRoute(key: route.key))
+        // first we look up in the current registry
+        if let factory = handlers[route.key] {
+            return factory(route.parameter.value)
         }
-        return factory(route.parameter.value)
+        // then we look up in the parent (which in turn can also look it up in it's parent)
+        if let parentRegistry {
+            return parentRegistry.resolve(route)
+        }
+        // in the end we fall back to the unresolved route diagnostics
+        diagnostics.logger?("[Navigator] No handler registered for route '\(route.key)'")
+        diagnostics.onUnresolvedRoute?(route.key)
+        return .failed(.unregisteredRoute(key: route.key))
     }
 
-    /// Returns `true` if a handler is registered for the given key.
+    /// Returns `true` if a handler is registered for the given key (checks in parent if present).
     public func canHandle<K: RouteKey>(_ key: K.Type) -> Bool {
-        handlers[K.id] != nil
+        handlers[K.id] != nil || (parentRegistry?.canHandle(key) ?? false)
     }
 
-    /// Returns `true` if a handler is registered for the given id string.
+    /// Returns `true` if a handler is registered for the given id string (checks in parent if present).
     public func canHandle(id: String) -> Bool {
-        handlers[id] != nil
+        handlers[id] != nil || (parentRegistry?.canHandle(id: id) ?? false)
     }
 
     /// Every route id currently registered. Useful for diagnostics dashboards / tests.
