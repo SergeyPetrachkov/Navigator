@@ -112,3 +112,38 @@ func onEventObservesNavigation() {
     #expect(pushCount == 1)
     #expect(dismissCount == 1)
 }
+
+@Test("Unresolved routes are reported through diagnostics instead of crashing silently")
+@MainActor
+func unresolvedRouteReportsDiagnostics() {
+    var unresolvedKey: String?
+    let registry = RouteRegistry(
+        diagnostics: NavigatorDiagnostics(
+            duplicatePolicy: .replaceSilently,
+            onUnresolvedRoute: { key in unresolvedKey = key }
+        )
+    )
+
+    _ = registry.resolve(ResolvedRoute.resolve(TestRouteKey.self, parameter: "x"))
+
+    #expect(unresolvedKey == TestRouteKey.id)
+}
+
+@Test("Duplicate registration with .refuse policy preserves the first handler")
+@MainActor
+func duplicateRegistrationRefusedPolicy() {
+    let registry = RouteRegistry(diagnostics: NavigatorDiagnostics(duplicatePolicy: .refuse))
+
+    var winner = ""
+    registry.register(TestRouteKey.self) { _ in
+        winner = "first"
+        return Text("1")
+    }
+    registry.register(TestRouteKey.self) { _ in
+        winner = "second"
+        return Text("2")
+    }
+
+    _ = registry.resolve(ResolvedRoute.resolve(TestRouteKey.self, parameter: "x"))
+    #expect(winner == "first")
+}
