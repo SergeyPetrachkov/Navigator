@@ -68,9 +68,8 @@ public struct AnySendable: @unchecked Sendable {
     /// `@unchecked`, the struct itself opts out of the checker.
     private let storage: any Sendable
 
-    /// Back-compat accessor — exposes the value as `Any` so existing handler code
-    /// doing `as? Parameter` continues to compile.
-    public var value: Any { storage }
+    /// Internal accessor for RouteRegistry factory closures
+    internal var value: Any { storage }
 
     public init(_ value: any Sendable) {
         self.storage = value
