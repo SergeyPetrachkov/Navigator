@@ -58,7 +58,7 @@ private struct DemoHomeView: View {
                         router.navigate(
                             to: SupportRouteKey.self,
                             parameter: "Support opened from the host app",
-                            style: .present
+                            style: .sheet
                         )
                     }
                 }

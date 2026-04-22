@@ -59,7 +59,7 @@ private struct DemoHomeView: View {
                         router.navigate(
                             to: SupportRouteKey.self,
                             parameter: "Support opened from the composition root",
-                            style: .present
+                            style: .sheet
                         )
                     }
                 }

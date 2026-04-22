@@ -7,8 +7,6 @@ public enum AppNavigationStyle: Sendable {
     /// Push onto the current navigation stack.
     case push
     /// Present as a modal sheet.
-    case present
-    /// Present as a modal sheet.
     case sheet
     /// Present as a full-screen cover.
     case fullScreenCover
@@ -183,7 +181,7 @@ public final class Navigator {
         case .push:
             path.append(route)
             onEvent?(.pushed(route))
-        case .present, .sheet:
+        case .sheet:
             presentingSheet = route
             presentingFullScreenCover = nil
             onEvent?(.presented(route, style: .sheet))

@@ -26,7 +26,7 @@ let project = Project(
             infoPlist: .extendingDefault(with: [
                 "UILaunchScreen": [:],
             ]),
-            sources: ["Sources/**"],
+            buildableFolders: ["Sources/"],
             dependencies: [
                 .package(product: "BigTechNavigator"),
                 .package(product: "DemoCatalogInterface"),

@@ -84,7 +84,7 @@ private struct CatalogScreen: View {
                     router.navigate(
                         to: SupportRouteKey.self,
                         parameter: "Support opened from Catalog",
-                        style: .present
+                        style: .sheet
                     )
                 }
             }
@@ -107,7 +107,12 @@ private struct ProductDetailsScreen: View {
                 .foregroundStyle(.secondary)
 
             Button("Start Checkout Flow") {
-                router.navigate(to: CheckoutRouteKey.self, parameter: product, style: .present)
+                router
+                    .navigate(
+                        to: CheckoutRouteKey.self,
+                        parameter: product,
+                        style: .sheet
+                    )
             }
             .buttonStyle(.borderedProminent)
 
@@ -115,7 +120,7 @@ private struct ProductDetailsScreen: View {
                 router.navigate(
                     to: SupportRouteKey.self,
                     parameter: "Question about \(product.name)",
-                    style: .present
+                    style: .sheet
                 )
             }
             .buttonStyle(.bordered)

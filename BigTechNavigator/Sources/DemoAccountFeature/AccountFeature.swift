@@ -47,7 +47,7 @@ private struct AccountScreen: View {
                 router.navigate(
                     to: SupportRouteKey.self,
                     parameter: "Support opened from Account",
-                    style: .present
+                    style: .sheet
                 )
             }
             .buttonStyle(.bordered)
