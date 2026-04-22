@@ -71,12 +71,12 @@ public struct AnySendable: @unchecked Sendable {
     /// Internal accessor for RouteRegistry factory closures
     internal var value: Any { storage }
 
-    public init(_ value: any Sendable) {
+    init(_ value: any Sendable) {
         self.storage = value
     }
 
     /// Typed cast helper. Returns `nil` if the erased type doesn't match `T`.
-    public func cast<T>(to type: T.Type = T.self) -> T? {
+    func cast<T>(to type: T.Type = T.self) -> T? {
         storage as? T
     }
 }

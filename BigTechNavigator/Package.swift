@@ -40,10 +40,6 @@ let package = Package(
             name: "DemoAccountFeature",
             targets: ["DemoAccountFeature"]
         ),
-        .executable(
-            name: "BigTechNavigatorDemoApp",
-            targets: ["BigTechNavigatorDemoApp"]
-        ),
     ],
     dependencies: [
         .package(name: "Navigator", path: "../Navigator"),
@@ -95,24 +91,6 @@ let package = Package(
                 "DemoAccountInterface",
                 "DemoOrdersInterface",
             ],
-            swiftSettings: swiftSettings
-        ),
-        .executableTarget(
-            name: "BigTechNavigatorDemoApp",
-            dependencies: [
-                "BigTechNavigator",
-                "DemoCatalogInterface",
-                "DemoOrdersInterface",
-                "DemoAccountInterface",
-                "DemoCatalogFeature",
-                "DemoOrdersFeature",
-                "DemoAccountFeature",
-            ],
-            swiftSettings: swiftSettings
-        ),
-        .testTarget(
-            name: "BigTechNavigatorTests",
-            dependencies: ["BigTechNavigator"],
             swiftSettings: swiftSettings
         ),
     ]

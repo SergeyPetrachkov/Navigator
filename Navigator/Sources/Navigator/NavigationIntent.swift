@@ -64,11 +64,6 @@ public struct NavigationIntent: Sendable {
     /// The type-erased parameter.
     public let parameter: AnySendable
 
-    public init(key: String, parameter: AnySendable) {
-        self.key = key
-        self.parameter = parameter
-    }
-
     /// Build an intent for a statically-typed key with a parameter.
     public init<K: RouteKey>(_ key: K.Type, parameter: K.Parameter) {
         self.key = K.id

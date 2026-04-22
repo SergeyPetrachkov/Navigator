@@ -46,7 +46,7 @@ import SwiftUI
 /// ## Thread safety
 ///
 /// The registry is `@MainActor`-isolated. Registration happens at startup on main,
-/// and lookups happen during SwiftUI body evaluation — also main. No locks.
+/// and lookups happen during SwiftUI body evaluation — also main.
 @MainActor
 @Observable
 public final class RouteRegistry {
