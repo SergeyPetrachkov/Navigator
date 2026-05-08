@@ -56,6 +56,7 @@ private struct AccountScreen: View {
         }
         .padding()
         .navigationTitle("Account")
+        .navigatorInlineNavigationTitle()
     }
 }
 

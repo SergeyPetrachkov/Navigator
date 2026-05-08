@@ -78,6 +78,7 @@ private struct CatalogScreen: View {
             }
         }
         .navigationTitle("Catalog")
+        .navigatorInlineNavigationTitle()
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Support") {

@@ -53,6 +53,7 @@ private struct OrdersScreen: View {
             .buttonStyle(.plain)
         }
         .navigationTitle("Orders")
+        .navigatorInlineNavigationTitle()
     }
 }
 
