@@ -98,37 +98,37 @@ Internally stores `[String: (Any) -> AnyView]`. The `AnyView` is an implementati
 The navigation API that features interact with. Injected via SwiftUI `@Environment` or we can inject it into our Store's Environment or into ViewModel (depending on the arch you choose).
 
 ```swift
-@Environment(Navigator.self) private var router
+@Environment(Navigator.self) private var navigator
 
 // Navigate to a Void-parameter route:
-router.navigate(to: ChatRouteKey.self)
+navigator.navigate(to: ChatRouteKey.self)
 
 // Navigate with a parameter:
-router.navigate(to: MealDetailsRouteKey.self, parameter: foodEntry)
+navigator.navigate(to: MealDetailsRouteKey.self, parameter: foodEntry)
 
 // Present as sheet:
-router.navigate(to: PaywallRouteKey.self, style: .present)
+navigator.navigate(to: PaywallRouteKey.self, style: .sheet)
 
 // Programmatic back:
-router.pop()
-router.dismiss()
+navigator.pop()
+navigator.dismiss()
 ```
 
 ### `RoutingCoordinatorView` (struct)
 
-The SwiftUI integration point. Replaces `CoordinatedRootView`.
+The SwiftUI integration point.
 
 ```swift
-RoutingCoordinatorView(router: router, registry: registry) {
+RoutingCoordinatorView(navigator: navigator, registry: registry) {
     DailyLogView(store: ...)
 }
 ```
 
 It:
-- Binds `router.path` to `NavigationStack(path:)`.
-- Binds `router.presentingSheet` to `.sheet(item:)`.
-- Resolves each `ResolvedRoute` via `registry.view(for:)`.
-- Injects `router` and `registry` into the environment.
+- Binds `navigator.path` to `NavigationStack(path:)`.
+- Binds `navigator.presentingSheet` to `.sheet(item:)`.
+- Resolves each `ResolvedRoute` via `registry.resolve(_:)`.
+- Injects `navigator` and `registry` into the environment.
 
 ### `ResolvedRoute` (struct)
 
@@ -150,17 +150,28 @@ The important thing is that **features never write `AnyView`** and **the composi
 
 ### Q: How does deep linking work?
 
-Parse the deep link URL into a `RouteKey` + parameter, then call `router.navigate(to:parameter:)`. Since route keys have stable string IDs, the mapping is straightforward:
+Parse the deep link URL into a `NavigationIntent`, then call `navigator.perform(_:)`. Since route keys have stable string IDs, the mapping is straightforward:
 
 ```swift
-func handle(deepLink: URL) {
-    switch deepLink.path {
-    case "/chat": router.navigate(to: ChatRouteKey.self)
-    case "/meal": router.navigate(to: MealDetailsRouteKey.self, parameter: parseFoodEntry(from: deepLink))
-    default: break
+func intent(from url: URL) -> NavigationIntent? {
+    switch url.path {
+    case "/chat": NavigationIntent(ChatRouteKey.self)
+    case "/meal": NavigationIntent(MealDetailsRouteKey.self, parameter: parseFoodEntry(from: url))
+    default: nil
     }
 }
+//...
+navigator.perform(intent(from: "https://..."))
 ```
+
+### Q: Can push notifications work with this?
+
+Yes, same as with deeplinks/universal links, parse the payloads and convert them into intents. Store those intents for deferred navigation (if you need some auth or whatever) or execute them immediately by passing intents to the navigator.
+
+### Q: What about UIKit?
+
+Wrap your UIKit stuff into `UIViewControllerRepresentable` and treat those views as any other SwiftUI views.
+If you use UIKit Coordinators, you can embed `RoutingCoordinatorView` into `UIHostingController`. Let your coordinator hold the reference to the navigator and route registry.
 
 ### Q: What about tab-based navigation?
 
