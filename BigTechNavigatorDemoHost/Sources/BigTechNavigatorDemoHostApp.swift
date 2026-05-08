@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct BigTechNavigatorDemoHostApp: App {
-    @State private var router = Navigator()
+    @State private var navigator = Navigator()
     @State private var registry = RouteRegistry()
 
     init() {
@@ -18,7 +18,7 @@ struct BigTechNavigatorDemoHostApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RoutingCoordinatorView(router: router, registry: registry) {
+            RoutingCoordinatorView(navigator: navigator, registry: registry) {
                 DemoHomeView()
             }
         }

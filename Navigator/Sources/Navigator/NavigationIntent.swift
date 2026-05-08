@@ -5,7 +5,6 @@ import Foundation
 /// A router-independent description of "where to go and with what".
 ///
 /// `NavigationIntent` separates *producing* a navigation request from *executing* it.
-/// That separation is what makes the system scale:
 ///
 /// - **Deep links** decode `URL`s into intents before a router exists.
 /// - **Tests** assert that a feature produced an intent without spinning up SwiftUI.

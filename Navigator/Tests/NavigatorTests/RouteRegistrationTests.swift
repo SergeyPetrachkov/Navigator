@@ -72,4 +72,43 @@ struct RouteRegistrationTests {
         #expect(!registry.canHandle(StringRouteKey.self))
         #expect(!registry.canHandle(VoidRouteKey.self))
     }
+
+    @Test("canHandle accepts both typed keys and string ids")
+    func canHandleRegisteredRoutes() throws {
+        let registry = RouteRegistry(diagnostics: NavigatorDiagnostics(duplicatePolicy: .replaceSilently))
+        registry.register(StringHandler())
+
+        try #require(registry.canHandle(StringRouteKey.self))
+        #expect(registry.canHandle(id: StringRouteKey.id))
+    }
+
+    @Test
+    func missingRouteIDsReportsAbsentIDs() {
+        let parent = RouteRegistry(diagnostics: NavigatorDiagnostics(duplicatePolicy: .replaceSilently))
+        parent.register(StringHandler())
+
+        let child = RouteRegistry(parentRegistry: parent)
+        child.register(VoidHandler())
+
+        let missingIDs = child.missingRouteIDs(outOf: [StringRouteKey.id, VoidRouteKey.id, IntRouteKey.id])
+        #expect(missingIDs == [IntRouteKey.id])
+    }
+
+    @Test
+    func registerClosureUnhappyPathReportsCorrectError() {
+        let registry = RouteRegistry(diagnostics: .init(typeMismatchPolicy: .reportOnly))
+        // register IntRouteKey
+        registry.register(IntRouteKey.self) { parameter in
+            EmptyView()
+        }
+        // try to resolve a route with the IntRouteKey ID but with a string parameter
+        let result = registry.resolve(ResolvedRoute(key: IntRouteKey.id, parameter: AnySendable("")))
+
+        switch result {
+        case .resolved:
+            Issue.record("Should not have resolved the route!")
+        case .failed(let failure):
+            #expect(failure == .parameterTypeMismatch(key: IntRouteKey.id, expected: "Int", actual: "String"))
+        }
+    }
 }

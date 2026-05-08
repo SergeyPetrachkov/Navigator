@@ -19,13 +19,6 @@ public enum AppNavigationStyle: Sendable {
 /// The navigation hub a feature uses to trigger navigation without knowing how destinations
 /// are built.
 ///
-/// ## Why this isn't called "Navigator"
-///
-/// A single app usually has **many** navigators. Each screen flow can host its own — a
-/// parent navigator for the root stack, child navigators for modal flows like Chat or
-/// Favorites, sibling navigators for tabs. The name reflects that fact: you're creating
-/// a local navigator for this flow, not reaching for a global singleton.
-///
 /// ## Parent / child navigators
 ///
 /// A child coordinator owns its own `Navigator` and `RouteRegistry`. Routes pushed via the
@@ -186,9 +179,16 @@ public final class Navigator {
             presentingFullScreenCover = nil
             onEvent?(.presented(route, style: .sheet))
         case .fullScreenCover:
+            #if os(iOS)
             presentingFullScreenCover = route
             presentingSheet = nil
             onEvent?(.presented(route, style: .fullScreenCover))
+            #else
+            print("❌ Unsupported presentation mode")
+            presentingSheet = route
+            presentingFullScreenCover = nil
+            onEvent?(.presented(route, style: .sheet))
+            #endif
         case .overridingRoot:
             path = [route]
             onEvent?(.replacedRoot(route))

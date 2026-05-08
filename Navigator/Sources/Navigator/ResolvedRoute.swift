@@ -76,7 +76,7 @@ public struct AnySendable: @unchecked Sendable {
     }
 
     /// Typed cast helper. Returns `nil` if the erased type doesn't match `T`.
-    func cast<T>(to type: T.Type = T.self) -> T? {
+    public func cast<T>(to type: T.Type = T.self) -> T? {
         storage as? T
     }
 }

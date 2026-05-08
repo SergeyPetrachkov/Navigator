@@ -32,6 +32,7 @@ struct ResolvedRouteTests {
         let id = UUID()
         let a = ResolvedRoute(id: id, key: StringRouteKey.id, parameter: AnySendable("x"))
         let b = ResolvedRoute(id: id, key: StringRouteKey.id, parameter: AnySendable("y"))
+        #expect(a.hashValue == b.hashValue)
         #expect(a == b)
     }
 }

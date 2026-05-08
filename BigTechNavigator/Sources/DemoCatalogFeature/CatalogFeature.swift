@@ -150,7 +150,7 @@ private struct CheckoutCoordinatorView: View {
     }
 
     var body: some View {
-        RoutingCoordinatorView(router: router, registry: registry) {
+        RoutingCoordinatorView(navigator: router, registry: registry) {
             CheckoutRootScreen(product: product)
         }
         .frame(minWidth: 440, minHeight: 320)

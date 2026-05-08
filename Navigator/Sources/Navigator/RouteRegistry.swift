@@ -52,7 +52,7 @@ import SwiftUI
 public final class RouteRegistry {
 
     /// Diagnostics used for duplicate handlers / unresolved routes / type mismatches.
-    public var diagnostics: NavigatorDiagnostics
+    public let diagnostics: NavigatorDiagnostics
 
     internal let parentRegistry: RouteRegistry?
 
@@ -93,12 +93,14 @@ public final class RouteRegistry {
     ) {
         let factory: @MainActor (Any) -> RouteResolution = { [diagnostics] parameter in
             guard let typed = parameter as? K.Parameter else {
-                return .failed(Self.reportTypeMismatch(
-                    key: K.id,
-                    expected: K.Parameter.self,
-                    got: parameter,
-                    diagnostics: diagnostics
-                ))
+                return .failed(
+                    Self.reportTypeMismatch(
+                        key: K.id,
+                        expected: K.Parameter.self,
+                        got: parameter,
+                        diagnostics: diagnostics
+                    )
+                )
             }
             return .resolved(AnyView(destination(typed)))
         }
@@ -170,6 +172,11 @@ public final class RouteRegistry {
     /// Every route id currently registered. Useful for diagnostics dashboards / tests.
     public var registeredKeyIDs: [String] {
         Array(handlers.keys)
+    }
+
+    /// Returns all route ids that cannot be resolved by the registry or its parents
+    public func missingRouteIDs<S: Sequence>(outOf ids: S) -> [String] where S.Element == String {
+        ids.filter { !canHandle(id: $0) }
     }
 
     // MARK: - Internals

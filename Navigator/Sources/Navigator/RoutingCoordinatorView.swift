@@ -42,18 +42,18 @@ import SwiftUI
 /// The default fallback is a debug-only diagnostic view and `EmptyView` in release.
 public struct RoutingCoordinatorView<Root: View>: View {
 
-    @Bindable private var router: Navigator
+    @Bindable private var navigator: Navigator
     private let registry: RouteRegistry
     private let root: Root
 
     @Environment(\.navigatorMissingRouteView) private var missingRouteView
 
     public init(
-        router: Navigator,
+        navigator: Navigator,
         registry: RouteRegistry,
         @ViewBuilder root: () -> Root
     ) {
-        self.router = router
+        self.navigator = navigator
         self.registry = registry
         self.root = root()
     }
@@ -74,21 +74,21 @@ public struct RoutingCoordinatorView<Root: View>: View {
 
     @ViewBuilder
     private var coordinatorBody: some View {
-        let base = NavigationStack(path: $router.path) {
+        let base = NavigationStack(path: $navigator.path) {
             root
                 .navigationDestination(for: ResolvedRoute.self) { route in
                     resolve(route)
                 }
         }
-        .sheet(item: $router.presentingSheet) { route in
+        .sheet(item: $navigator.presentingSheet) { route in
             resolve(route)
         }
-        .environment(router)
+        .environment(navigator)
         .environment(registry)
 
         #if os(iOS)
         base
-            .fullScreenCover(item: $router.presentingFullScreenCover) { route in
+            .fullScreenCover(item: $navigator.presentingFullScreenCover) { route in
                 resolve(route)
             }
         #else
