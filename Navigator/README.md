@@ -70,7 +70,7 @@ No other file needs to change.
 router.navigate(to: ChatRouteKey.self)                                // push, Void parameter
 router.navigate(to: ProfileRouteKey.self, parameter: userID)          // push, with parameter
 router.navigate(to: PaywallRouteKey.self, style: .sheet)              // sheet
-router.navigate(to: LoginRouteKey.self, style: .fullScreenCover)      // full-screen cover
+router.navigate(to: LoginRouteKey.self, style: .fullScreenCover)      // full-screen cover on iOS, sheet elsewhere
 router.navigate(to: OrdersRouteKey.self, style: .overridingRoot)      // replace root
 
 router.pop()                                                          // pop 1
@@ -123,6 +123,89 @@ let decoders: [(URL) -> NavigationIntent?] = [
 
 if let intent = decoders.lazy.compactMap({ $0(url) }).first {
     router.perform(intent)
+}
+```
+
+SwiftUI app entry points can pass custom-scheme links and universal links via the same decoder pipeline:
+
+```swift
+@main
+struct ShopApp: App {
+    @State private var navigator = Navigator()
+    @State private var registry = RouteRegistry()
+    
+    var body: some Scene {
+        WindowGroup {
+            RoutingCoordinatorView(navigator: navigator, registry: registry) {
+                HomeView()
+            }
+            .onOpenURL { url in
+                handle(url)
+            }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                guard let url = activity.webpageURL else { return }
+                handle(url)
+            }
+        }
+    }
+    
+    private func handle(_ url: URL) {
+        guard let intent = AppDeepLinks.intent(from: url) else { return }
+        navigator.perform(intent)
+    }
+}
+```
+
+Push notifications share the same idea: extract the payload and convert it into a typed intent. 
+Then execute it on the navigator.
+
+## UIKit interopability
+
+To show UIKit-based flows you need to create SwiftUI adapters via UIViewControllerRepresentable.
+
+```swift
+struct UIKitBasedCheckoutRouteHandler: RouteHandler {
+    typealias Key = LegacyCheckoutRouteKey
+    
+    func destination(for parameter: CheckoutInput) -> some View {
+        LegacyCheckoutView(input: parameter)
+    }
+}
+
+struct LegacyCheckoutView: UIViewControllerRepresentable {
+    let input: CheckoutInput
+    
+    func makeUIViewController(context: Context) -> UINavigationController {
+        let checkoutVC = LegacyCheckoutVC(input: input)
+        return UINavigationController(rootViewController: checkoutVC)
+    }
+    
+    func updateUIViewController(_ controller: UINavigationcontroller, context: Context) {}
+}
+```
+
+Or the other way around
+
+```swift
+@MainActor
+final class MyOldCoordinator {
+    private let navigator: Navigator()
+    private let registry: RouteRegistry
+    private let parentController: UIViewController
+    
+    init(registry: RouteRegistry, parentController: UIViewController) {
+        self.registry = registry
+    }
+    
+    func start() {
+        parentController.present(
+            UIHostingController(
+                rootView: RoutingCoordinatorView(navigator: navigator, registry: registry) { 
+                    HomeView()
+                }
+            )
+        )
+    }
 }
 ```
 

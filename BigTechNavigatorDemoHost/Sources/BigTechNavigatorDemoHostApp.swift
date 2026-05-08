@@ -7,6 +7,15 @@ import DemoOrdersFeature
 import DemoOrdersInterface
 import SwiftUI
 
+enum AppDeepLinks {
+
+    // this is a dummy example
+
+    static func intent(from url: URL) -> NavigationIntent? {
+        NavigationIntent(CatalogRouteKey.self)
+    }
+}
+
 @main
 struct BigTechNavigatorDemoHostApp: App {
     @State private var navigator = Navigator()
@@ -21,7 +30,19 @@ struct BigTechNavigatorDemoHostApp: App {
             RoutingCoordinatorView(navigator: navigator, registry: registry) {
                 DemoHomeView()
             }
+            .onOpenURL { url in
+                handle(url)
+            }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                guard let url = activity.webpageURL else { return }
+                handle(url)
+            }
         }
+    }
+
+    private func handle(_ url: URL) {
+        guard let intent = AppDeepLinks.intent(from: url) else { return }
+        navigator.perform(intent)
     }
 
     private static func makeRegistry() -> RouteRegistry {
