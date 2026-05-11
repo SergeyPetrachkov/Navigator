@@ -117,9 +117,11 @@ public final class Navigator {
     /// Replace the entire navigation path with `intents` (deep-link entry point).
     ///
     /// The first intent becomes the root of the stack; the rest are pushed in order.
-    /// Emits `replacedPath`.
+    /// Clears any active modal presentation and emits `replacedPath`.
     public func setPath(_ intents: [NavigationIntent]) {
         let resolved = intents.map { $0.makeResolvedRoute() }
+        presentingSheet = nil
+        presentingFullScreenCover = nil
         path = resolved
         onEvent?(.replacedPath(resolved))
     }
@@ -190,6 +192,8 @@ public final class Navigator {
             onEvent?(.presented(route, style: .sheet))
             #endif
         case .overridingRoot:
+            presentingSheet = nil
+            presentingFullScreenCover = nil
             path = [route]
             onEvent?(.replacedRoot(route))
         }
