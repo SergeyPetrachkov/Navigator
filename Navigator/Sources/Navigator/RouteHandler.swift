@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Route Handler
-
 /// A factory that produces a SwiftUI `View` for a given `RouteKey`.
 ///
 /// Each feature module implements one `RouteHandler` per navigable destination it owns.
@@ -39,3 +37,4 @@ public protocol RouteHandler {
     @ViewBuilder
     func destination(for parameter: Key.Parameter) -> Body
 }
+

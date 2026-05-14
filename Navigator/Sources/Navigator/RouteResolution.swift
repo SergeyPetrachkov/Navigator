@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Route Resolution
-
 public enum RouteResolution {
     case resolved(AnyView)
     case failed(RouteResolutionFailure)
@@ -20,3 +18,4 @@ public enum RouteResolutionFailure: Sendable, Equatable {
         }
     }
 }
+

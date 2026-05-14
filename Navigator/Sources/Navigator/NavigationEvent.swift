@@ -1,20 +1,11 @@
 import Foundation
 
-// MARK: - Navigation Event
-
 public enum NavigationPresentationStyle: Sendable {
     case sheet
     case fullScreenCover
 }
 
-/// A signal emitted by `Navigator` after a successful navigation mutation.
-///
-/// Use it for:
-/// - **Analytics**: log a screen view when `pushed` or `presented` fires.
-/// - **Tests**: observe without SwiftUI by assigning `Navigator.onEvent` and asserting.
-/// - **Debugging**: pipe events into a logger to see the navigation timeline.
-///
-/// Events are emitted on the `@MainActor` because the router itself is main-actor.
+/// An event emitted after a successful navigation mutation.
 public enum NavigationEvent: Sendable {
 
     /// A route was pushed onto the navigation stack.

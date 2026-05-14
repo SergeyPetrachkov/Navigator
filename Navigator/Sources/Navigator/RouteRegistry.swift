@@ -1,12 +1,6 @@
 import SwiftUI
 
-// MARK: - Route Registry
-
 /// A mapping from route key ids to type-erased view factories.
-///
-/// The registry is the central "phone book" of the navigation system. At app startup
-/// the composition root registers one factory per route key. At navigation time
-/// `RoutingCoordinatorView` looks up the factory by id and calls it.
 ///
 /// ## Two registration flavors
 ///
@@ -48,7 +42,6 @@ import SwiftUI
 /// The registry is `@MainActor`-isolated. Registration happens at startup on main,
 /// and lookups happen during SwiftUI body evaluation — also main.
 @MainActor
-@Observable
 public final class RouteRegistry {
 
     /// Diagnostics used for duplicate handlers / unresolved routes / type mismatches.
@@ -83,10 +76,7 @@ public final class RouteRegistry {
         install(H.Key.id, factory: factory)
     }
 
-    /// Register a block-based handler for a `RouteKey`.
-    ///
-    /// Saves defining a dedicated `RouteHandler` struct when the destination is
-    /// expressible as a single view-builder closure.
+    /// Register a destination builder for a `RouteKey`.
     public func register<K: RouteKey, V: View>(
         _ key: K.Type,
         @ViewBuilder destination: @escaping @MainActor (K.Parameter) -> V
@@ -95,7 +85,7 @@ public final class RouteRegistry {
             guard let typed = parameter as? K.Parameter else {
                 return .failed(
                     Self.reportTypeMismatch(
-                        key: K.id,
+                        key: key.id,
                         expected: K.Parameter.self,
                         got: parameter,
                         diagnostics: diagnostics
@@ -104,7 +94,7 @@ public final class RouteRegistry {
             }
             return .resolved(AnyView(destination(typed)))
         }
-        install(K.id, factory: factory)
+        install(key.id, factory: factory)
     }
 
     /// Register a block-based handler for a Void-parameter `RouteKey`.
@@ -131,7 +121,7 @@ public final class RouteRegistry {
 
     /// Remove any handler registered for `K`. No-op if nothing is registered.
     public func unregister<K: RouteKey>(_ key: K.Type) {
-        handlers.removeValue(forKey: K.id)
+        handlers.removeValue(forKey: key.id)
     }
 
     /// Remove every registered handler. Useful between tests.
@@ -141,15 +131,13 @@ public final class RouteRegistry {
 
     // MARK: - Resolution
 
-    /// Resolve a `ResolvedRoute` into a typed result.
-    ///
-    /// Resolution order: local handlers first, parent next (if set).
+    /// Resolves a route using local handlers first, then the parent registry.
     public func resolve(_ route: ResolvedRoute) -> RouteResolution {
         // first we look up in the current registry
         if let factory = handlers[route.key] {
             return factory(route.parameter.value)
         }
-        // then we look up in the parent (which in turn can also look it up in it's parent)
+        // then we look up in the parent (which in turn can also look it up in its parent)
         if let parentRegistry {
             return parentRegistry.resolve(route)
         }
@@ -161,7 +149,7 @@ public final class RouteRegistry {
 
     /// Returns `true` if a handler is registered for the given key (checks in parent if present).
     public func canHandle<K: RouteKey>(_ key: K.Type) -> Bool {
-        handlers[K.id] != nil || (parentRegistry?.canHandle(key) ?? false)
+        handlers[key.id] != nil || (parentRegistry?.canHandle(key) ?? false)
     }
 
     /// Returns `true` if a handler is registered for the given id string (checks in parent if present).
@@ -184,7 +172,7 @@ public final class RouteRegistry {
     private func install(_ id: String, factory: @MainActor @escaping (Any) -> RouteResolution) {
         if handlers[id] != nil {
             switch diagnostics.duplicatePolicy {
-            case .assertInDebug:
+            case .assertInDebugReportInProd:
                 diagnostics.logger?("[Navigator] Duplicate handler for route '\(id)' — replacing.")
                 assertionFailure(
                     "[Navigator] Duplicate handler for route '\(id)'. "
@@ -207,13 +195,13 @@ public final class RouteRegistry {
         got value: Any,
         diagnostics: NavigatorDiagnostics
     ) -> RouteResolutionFailure {
-        let expectedName = String(describing: Expected.self)
+        let expectedName = String(describing: expected)
         let actualName = String(describing: type(of: value))
         diagnostics.logger?(
             "[Navigator] Type mismatch for route '\(key)': expected \(expectedName), got \(actualName)"
         )
         diagnostics.onParameterTypeMismatch?(key, expectedName, actualName)
-        if diagnostics.typeMismatchPolicy == .assertInDebug {
+        if diagnostics.typeMismatchPolicy == .assertInDebugReportInProd {
             assertionFailure(
                 "[Navigator] Type mismatch for route '\(key)': expected \(expectedName), got \(actualName)"
             )
@@ -221,3 +209,4 @@ public final class RouteRegistry {
         return .parameterTypeMismatch(key: key, expected: expectedName, actual: actualName)
     }
 }
+

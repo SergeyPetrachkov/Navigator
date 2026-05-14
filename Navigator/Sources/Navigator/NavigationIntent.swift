@@ -1,7 +1,5 @@
 import Foundation
 
-// MARK: - Navigation Intent
-
 /// A router-independent description of "where to go and with what".
 ///
 /// `NavigationIntent` separates *producing* a navigation request from *executing* it.
@@ -25,7 +23,7 @@ import Foundation
 /// ## Executing an intent
 ///
 /// ```swift
-/// router.perform(intent, style: .sheet)
+/// navigator.perform(intent, style: .sheet)
 /// ```
 ///
 /// ## Deep-link recipe
@@ -65,13 +63,13 @@ public struct NavigationIntent: Sendable {
 
     /// Build an intent for a statically-typed key with a parameter.
     public init<K: RouteKey>(_ key: K.Type, parameter: K.Parameter) {
-        self.key = K.id
+        self.key = key.id
         self.parameter = AnySendable(parameter)
     }
 
     /// Build an intent for a Void-parameter key.
     public init<K: RouteKey>(_ key: K.Type) where K.Parameter == Void {
-        self.key = K.id
+        self.key = key.id
         self.parameter = AnySendable(())
     }
 
@@ -80,3 +78,4 @@ public struct NavigationIntent: Sendable {
         ResolvedRoute(key: key, parameter: parameter)
     }
 }
+

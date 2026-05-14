@@ -1,17 +1,9 @@
 import Foundation
 
-// MARK: - Resolved Route
-
 /// A type-erased navigation request that pairs a route key id with its parameter.
 ///
 /// This is the "coin" that flows through the navigation system. Features never build these
 /// by hand — they call `Navigator.navigate(to:parameter:)` or `.perform(_:)`.
-///
-/// Why exists:
-/// - `NavigationPath` and `.sheet(item:)` require a single concrete, `Hashable & Identifiable`
-///   type. `ResolvedRoute` is that concrete type.
-/// - Each pushed/presented route needs a unique identity so identical destinations can be
-///   pushed repeatedly and `SwiftUI` can tell them apart.
 public struct ResolvedRoute: Hashable, Identifiable, Sendable {
 
     /// A unique navigation event id so identical destinations can be pushed repeatedly.
@@ -33,14 +25,14 @@ public struct ResolvedRoute: Hashable, Identifiable, Sendable {
         self.parameter = parameter
     }
 
-    /// Convenience: build a `ResolvedRoute` from a statically-typed key.
+    /// Builds a route from a typed key.
     public static func resolve<K: RouteKey>(_ key: K.Type, parameter: K.Parameter) -> ResolvedRoute {
-        ResolvedRoute(key: K.id, parameter: AnySendable(parameter))
+        ResolvedRoute(key: key.id, parameter: AnySendable(parameter))
     }
 
-    /// Convenience: build a `ResolvedRoute` from a Void-parameter key.
+    /// Builds a route from a Void-parameter key.
     public static func resolve<K: RouteKey>(_ key: K.Type) -> ResolvedRoute where K.Parameter == Void {
-        ResolvedRoute(key: K.id, parameter: AnySendable(()))
+        ResolvedRoute(key: key.id, parameter: AnySendable(()))
     }
 
     // Equality and hashing are based on the navigation event id so the same destination
@@ -68,15 +60,15 @@ public struct AnySendable: @unchecked Sendable {
     /// `@unchecked`, the struct itself opts out of the checker.
     private let storage: any Sendable
 
-    /// Internal accessor for RouteRegistry factory closures
+    /// Internal accessor for `RouteRegistry` factory closures.
     internal var value: Any { storage }
 
-    init(_ value: any Sendable) {
+    internal init(_ value: any Sendable) {
         self.storage = value
     }
 
-    /// Typed cast helper. Returns `nil` if the erased type doesn't match `T`.
-    public func cast<T>(to type: T.Type = T.self) -> T? {
+    /// Casts the stored parameter to `T`.
+    public func cast<T>(to _: T.Type = T.self) -> T? {
         storage as? T
     }
 }

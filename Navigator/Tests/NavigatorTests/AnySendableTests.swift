@@ -18,3 +18,4 @@ struct AnySendableTests {
         #expect(erased.value as? Int == 42)
     }
 }
+

@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Route Key
-
 /// A type-safe identifier for a navigation destination.
 ///
 /// `RouteKey` is open for extension — any module can contribute its own keys without
@@ -35,6 +33,7 @@ import SwiftUI
 /// You can override `id` for human-readable deep links or URL paths:
 ///
 /// ```swift
+/// // In ProfileInterface (an "Interface" module — no implementations, cheap to import)
 /// public enum ProfileRouteKey: RouteKey {
 ///     public typealias Parameter = UserID
 ///     public static let id = "profile"   // e.g. so deep links use /profile/:id

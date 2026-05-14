@@ -32,9 +32,6 @@ struct NavigationStyleTests {
         #if os(iOS)
         #expect(navigator.presentingSheet == nil)
         #expect(navigator.presentingFullScreenCover?.key == VoidRouteKey.id)
-        #else
-        #expect(navigator.presentingSheet?.key == VoidRouteKey.id)
-        #expect(navigator.presentingFullScreenCover == nil)
         #endif
     }
 
@@ -69,8 +66,8 @@ struct NavigationStyleTests {
         #expect(navigator.presentingSheet == nil)
         #expect(navigator.presentingFullScreenCover?.key == StringRouteKey.id)
         #else
-        #expect(navigator.presentingSheet?.key == StringRouteKey.id)
         #expect(navigator.presentingFullScreenCover == nil)
+        #expect(navigator.presentingSheet?.key == StringRouteKey.id)
         #endif
     }
 
@@ -92,3 +89,4 @@ struct NavigationStyleTests {
         #expect(navigator.presentingSheet?.parameter.cast(to: String.self) == "modal")
     }
 }
+

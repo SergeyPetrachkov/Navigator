@@ -21,3 +21,4 @@ struct NavigationIntentTests {
         #expect(resolved.parameter.cast(to: Void.self) != nil)
     }
 }
+

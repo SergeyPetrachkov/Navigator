@@ -84,7 +84,6 @@ public struct RoutingCoordinatorView<Root: View>: View {
             resolve(route)
         }
         .environment(navigator)
-        .environment(registry)
 
         #if os(iOS)
         base

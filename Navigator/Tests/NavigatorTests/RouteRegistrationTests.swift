@@ -1,3 +1,4 @@
+import Combine
 import Testing
 import SwiftUI
 @testable import Navigator
@@ -112,3 +113,4 @@ struct RouteRegistrationTests {
         }
     }
 }
+

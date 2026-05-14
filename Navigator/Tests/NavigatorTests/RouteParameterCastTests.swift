@@ -12,3 +12,4 @@ func resolvedRouteParameterCastReturnsCorrectString(parameter: String) async thr
 
     #expect(route.parameter.cast(to: String.self) == parameter)
 }
+

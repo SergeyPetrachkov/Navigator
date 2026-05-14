@@ -17,3 +17,4 @@ struct RouteKeyTests {
         #expect(VoidRouteKey.id == "test.void")
     }
 }
+

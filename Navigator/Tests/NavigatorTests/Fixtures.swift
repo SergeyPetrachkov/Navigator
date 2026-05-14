@@ -51,3 +51,4 @@ struct IntModule: AppRouteModule {
         registry.register(IntRouteKey.self) { value in Text("\(value)") }
     }
 }
+

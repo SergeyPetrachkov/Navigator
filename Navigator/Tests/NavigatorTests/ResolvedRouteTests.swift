@@ -36,3 +36,4 @@ struct ResolvedRouteTests {
         #expect(a == b)
     }
 }
+
